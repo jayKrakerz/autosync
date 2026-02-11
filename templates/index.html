@@ -383,6 +383,49 @@
         .status-badge.error { background: var(--red-50); color: var(--red-700); }
         .status-badge.retry_failed { background: #fef3c7; color: #92400e; }
 
+        /* PIN Modal */
+        .pin-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.45); backdrop-filter: blur(4px);
+            z-index: 1000; align-items: center; justify-content: center;
+        }
+        .pin-overlay.visible { display: flex; }
+        .pin-modal {
+            background: var(--white); border-radius: var(--radius-lg);
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+            padding: 2rem; width: 360px; max-width: 90vw;
+            animation: fadeIn 0.2s ease;
+        }
+        .pin-modal h3 {
+            font-size: 1.05rem; font-weight: 700; color: var(--gray-900);
+            margin-bottom: 0.25rem;
+        }
+        .pin-modal .pin-subtitle {
+            font-size: 0.8rem; color: var(--gray-500); margin-bottom: 1.25rem;
+        }
+        .pin-modal input[type="password"] {
+            width: 100%; padding: 0.65rem 0.85rem;
+            border: 1px solid var(--gray-200); border-radius: var(--radius-sm);
+            font-family: inherit; font-size: 0.9rem; color: var(--gray-800);
+            background: var(--white); outline: none;
+            transition: all var(--transition); margin-bottom: 0.75rem;
+            letter-spacing: 0.15em;
+        }
+        .pin-modal input[type="password"]:focus {
+            border-color: var(--red-400); box-shadow: 0 0 0 3px rgba(220,38,38,0.1);
+        }
+        .pin-modal .pin-error {
+            font-size: 0.78rem; color: var(--red-600); margin-bottom: 0.75rem;
+            min-height: 1.1em;
+        }
+        .pin-modal .pin-actions {
+            display: flex; gap: 0.5rem; justify-content: flex-end;
+        }
+
+        /* Lock button in topbar */
+        .btn-lock { gap: 0.35rem; }
+        .btn-lock svg { width: 14px; height: 14px; }
+
         /* Responsive */
         @media (max-width: 900px) {
             .sidebar { display: none; }
@@ -468,6 +511,10 @@
             <header class="topbar">
                 <div class="topbar-title" id="topbar-title">Dashboard</div>
                 <div class="topbar-actions" id="topbar-actions">
+                    <button class="btn btn-secondary btn-sm btn-lock" id="btn-admin-lock" style="display:none;" title="Lock settings">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                        Lock
+                    </button>
                     <button class="btn btn-primary btn-sm" id="btn-start">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                         Start
@@ -651,7 +698,7 @@
                                     <span id="auth-status-text" style="font-size:0.82rem;color:var(--gray-600);flex:1;">Not signed in</span>
                                 </div>
                                 <div style="display:flex;gap:0.5rem;">
-                                    <a href="/auth/login" class="btn btn-primary btn-sm" id="btn-ms-signin">Sign In with Microsoft</a>
+                                    <button class="btn btn-primary btn-sm" id="btn-ms-signin" type="button">Sign In with Microsoft</button>
                                     <button class="btn btn-danger-outline btn-sm" id="btn-ms-signout" style="display:none;">Sign Out</button>
                                 </div>
                             </div>
@@ -739,10 +786,30 @@
                             <div id="autostart-status" style="font-size:0.72rem;color:var(--gray-400);margin-top:0.25rem;"></div>
                         </div>
 
-                        <button class="btn btn-primary" id="btn-save-config">Save Settings</button>
+                        <div style="display:flex;gap:0.5rem;align-items:center;">
+                            <button class="btn btn-primary" id="btn-save-config">Save Settings</button>
+                            <button class="btn btn-secondary" id="btn-change-pin" type="button">Change PIN</button>
+                        </div>
                         <div class="config-toast" id="config-result"></div>
                     </div>
                 </section>
+            </div>
+        </div>
+    </div>
+
+    <!-- PIN Modal Overlay -->
+    <div class="pin-overlay" id="pin-overlay">
+        <div class="pin-modal">
+            <h3 id="pin-modal-title">Enter Admin PIN</h3>
+            <div class="pin-subtitle" id="pin-modal-subtitle">PIN is required to access settings.</div>
+            <div id="pin-fields">
+                <input type="password" id="pin-input" placeholder="Enter PIN" autocomplete="off">
+                <input type="password" id="pin-confirm" placeholder="Confirm PIN" autocomplete="off" style="display:none;">
+            </div>
+            <div class="pin-error" id="pin-error"></div>
+            <div class="pin-actions">
+                <button class="btn btn-secondary btn-sm" id="pin-cancel">Cancel</button>
+                <button class="btn btn-primary btn-sm" id="pin-submit">Unlock</button>
             </div>
         </div>
     </div>
@@ -764,10 +831,19 @@
         if (name === 'conflicts') loadConflicts();
         if (name === 'history') loadHistory();
         if (name === 'settings') loadConfig();
+        // Show/hide lock button in topbar
+        const lockBtn = document.getElementById('btn-admin-lock');
+        if (lockBtn) lockBtn.style.display = (name === 'settings' && getAdminToken()) ? 'inline-flex' : 'none';
     }
 
     navItems.forEach(btn => {
-        btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+        btn.addEventListener('click', async () => {
+            if (btn.dataset.tab === 'settings') {
+                const ok = await ensureAdmin('PIN is required to access settings.');
+                if (!ok) return;
+            }
+            switchTab(btn.dataset.tab);
+        });
     });
 
     // ====================================================================
@@ -813,6 +889,143 @@
         const d = document.createElement('div');
         d.textContent = s;
         return d.innerHTML;
+    }
+
+    // ====================================================================
+    // Admin PIN System
+    // ====================================================================
+    const pinOverlay = document.getElementById('pin-overlay');
+    const pinInput = document.getElementById('pin-input');
+    const pinConfirm = document.getElementById('pin-confirm');
+    const pinError = document.getElementById('pin-error');
+    const pinSubmitBtn = document.getElementById('pin-submit');
+    const pinTitle = document.getElementById('pin-modal-title');
+    const pinSubtitle = document.getElementById('pin-modal-subtitle');
+
+    let _pinResolve = null;  // promise resolver for modal
+    let _pinIsSetup = false; // true = first-time set-pin mode
+
+    function getAdminToken() {
+        return sessionStorage.getItem('admin_token') || '';
+    }
+
+    function setAdminToken(token) {
+        sessionStorage.setItem('admin_token', token);
+    }
+
+    function clearAdminToken() {
+        sessionStorage.removeItem('admin_token');
+    }
+
+    function adminHeaders() {
+        return { 'X-Admin-Token': getAdminToken() };
+    }
+
+    /** Show PIN modal and return a promise that resolves to true (unlocked) or false (cancelled). */
+    function requestPin(reason) {
+        return new Promise(async (resolve) => {
+            _pinResolve = resolve;
+            pinInput.value = '';
+            pinConfirm.value = '';
+            pinError.textContent = '';
+
+            // Check if PIN is set
+            const status = await api('/api/admin/status');
+            _pinIsSetup = !status.pin_set;
+
+            if (_pinIsSetup) {
+                pinTitle.textContent = 'Set Admin PIN';
+                pinSubtitle.textContent = 'Create a PIN to protect settings and authentication.';
+                pinConfirm.style.display = '';
+                pinSubmitBtn.textContent = 'Set PIN';
+            } else {
+                pinTitle.textContent = 'Enter Admin PIN';
+                pinSubtitle.textContent = reason || 'PIN is required to access settings.';
+                pinConfirm.style.display = 'none';
+                pinSubmitBtn.textContent = 'Unlock';
+            }
+
+            pinOverlay.classList.add('visible');
+            pinInput.focus();
+        });
+    }
+
+    function closePinModal(success) {
+        pinOverlay.classList.remove('visible');
+        if (_pinResolve) { _pinResolve(success); _pinResolve = null; }
+    }
+
+    document.getElementById('pin-cancel').addEventListener('click', () => closePinModal(false));
+
+    pinOverlay.addEventListener('click', (e) => {
+        if (e.target === pinOverlay) closePinModal(false);
+    });
+
+    pinInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            if (_pinIsSetup) { pinConfirm.focus(); }
+            else { pinSubmitBtn.click(); }
+        }
+    });
+    pinConfirm.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') pinSubmitBtn.click();
+    });
+
+    pinSubmitBtn.addEventListener('click', async () => {
+        const pin = pinInput.value;
+        pinError.textContent = '';
+
+        if (pin.length < 4) {
+            pinError.textContent = 'PIN must be at least 4 characters.';
+            return;
+        }
+
+        if (_pinIsSetup) {
+            // Setting PIN for the first time
+            if (pin !== pinConfirm.value) {
+                pinError.textContent = 'PINs do not match.';
+                return;
+            }
+            const r = await api('/api/admin/set-pin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...adminHeaders() },
+                body: JSON.stringify({ pin }),
+            });
+            if (r.ok) {
+                setAdminToken(r.token);
+                closePinModal(true);
+            } else {
+                pinError.textContent = r.error || 'Failed to set PIN.';
+            }
+        } else {
+            // Verifying existing PIN
+            const r = await api('/api/admin/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pin }),
+            });
+            if (r.ok) {
+                setAdminToken(r.token);
+                closePinModal(true);
+            } else {
+                pinError.textContent = r.error || 'Incorrect PIN.';
+                pinInput.value = '';
+                pinInput.focus();
+            }
+        }
+    });
+
+    /** Ensure we have a valid admin session. Returns true if unlocked. */
+    async function ensureAdmin(reason) {
+        // Check if current token is still valid
+        const token = getAdminToken();
+        if (token) {
+            // Quick server-side check: try admin status endpoint is always open,
+            // but we can validate by attempting a protected call.
+            // Instead, just trust the token and let 401 handling re-prompt.
+            return true;
+        }
+        return await requestPin(reason);
     }
 
     // ====================================================================
@@ -1078,7 +1291,14 @@
     // Settings Tab
     // ====================================================================
     async function loadConfig() {
-        const data = await api('/api/config');
+        const resp = await fetch('/api/config', { headers: adminHeaders() });
+        if (resp.status === 401) {
+            // Token expired — kick back to dashboard
+            clearAdminToken();
+            switchTab('dashboard');
+            return;
+        }
+        const data = await resp.json();
         document.getElementById('cfg-share-link').value = data.share_link || '';
         document.getElementById('cfg-local-folder').value = data.local_folder || '';
         document.getElementById('cfg-poll-interval').value = data.poll_interval || 300;
@@ -1101,6 +1321,10 @@
             document.getElementById('autostart-status').textContent =
                 as.installed ? 'LaunchAgent installed' : 'Not installed';
         } catch (e) { /* ignore */ }
+
+        // Show lock button
+        const lockBtn = document.getElementById('btn-admin-lock');
+        if (lockBtn && getAdminToken()) lockBtn.style.display = 'inline-flex';
     }
 
     document.getElementById('btn-save-config').addEventListener('click', async () => {
@@ -1117,12 +1341,19 @@
             exclude_folders: document.getElementById('cfg-exclude-folders').value,
             notifications_enabled: notifOn,
         };
-        const r = await api('/api/config', {
+        const resp = await fetch('/api/config', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...adminHeaders() },
             body: JSON.stringify(body),
         });
+        const r = await resp.json();
         const el = document.getElementById('config-result');
+        if (resp.status === 401) {
+            clearAdminToken();
+            const ok = await ensureAdmin('Session expired. Re-enter PIN.');
+            if (ok) document.getElementById('btn-save-config').click();
+            return;
+        }
         if (r.ok) {
             el.className = 'config-toast toast-ok';
             el.textContent = 'Settings saved successfully.';
@@ -1168,7 +1399,8 @@
         }
     });
 
-    loadConfig();
+    // Note: loadConfig() is NOT called on page load — requires admin PIN.
+    // It is called when the user navigates to the Settings tab after PIN verification.
 
     // ====================================================================
     // Auth Status Polling
@@ -1206,9 +1438,55 @@
         }
     }
 
+    document.getElementById('btn-ms-signin').addEventListener('click', async () => {
+        const ok = await ensureAdmin('PIN is required to sign in with Microsoft.');
+        if (!ok) return;
+        window.location.href = '/auth/login?admin_token=' + encodeURIComponent(getAdminToken());
+    });
+
     document.getElementById('btn-ms-signout').addEventListener('click', async () => {
-        await api('/auth/logout', { method: 'POST' });
+        const ok = await ensureAdmin('PIN is required to sign out.');
+        if (!ok) return;
+        const resp = await fetch('/auth/logout', {
+            method: 'POST',
+            headers: adminHeaders(),
+        });
+        if (resp.status === 401) {
+            clearAdminToken();
+            const retry = await ensureAdmin('Session expired. Re-enter PIN.');
+            if (retry) document.getElementById('btn-ms-signout').click();
+            return;
+        }
         refreshAuthStatus();
+    });
+
+    document.getElementById('btn-admin-lock').addEventListener('click', async () => {
+        await fetch('/api/admin/lock', {
+            method: 'POST',
+            headers: adminHeaders(),
+        });
+        clearAdminToken();
+        document.getElementById('btn-admin-lock').style.display = 'none';
+        switchTab('dashboard');
+    });
+
+    document.getElementById('btn-change-pin').addEventListener('click', async () => {
+        // Reuse the setup flow to set a new PIN (already authenticated via session)
+        pinInput.value = '';
+        pinConfirm.value = '';
+        pinError.textContent = '';
+        _pinIsSetup = true;
+        pinTitle.textContent = 'Change Admin PIN';
+        pinSubtitle.textContent = 'Enter a new PIN.';
+        pinConfirm.style.display = '';
+        pinSubmitBtn.textContent = 'Change PIN';
+        _pinResolve = null;
+
+        await new Promise((resolve) => {
+            _pinResolve = resolve;
+            pinOverlay.classList.add('visible');
+            pinInput.focus();
+        });
     });
 
     setInterval(refreshAuthStatus, 10000);

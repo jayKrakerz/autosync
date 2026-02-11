@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 
 from flask import Flask, Response, jsonify, redirect, render_template, request
 
+import admin_pin
 import config as cfg
 from config import save_user_config
 from log_handler import sse_handler
@@ -54,10 +55,69 @@ def api_status():
 
 
 # ---------------------------------------------------------------------------
+# Admin PIN helpers
+# ---------------------------------------------------------------------------
+def _require_admin():
+    """Check X-Admin-Token header. Returns error response or None if OK."""
+    if not admin_pin.is_pin_set():
+        return jsonify({"ok": False, "error": "PIN not set"}), 401
+    token = request.headers.get("X-Admin-Token", "")
+    if not admin_pin.validate_session(token):
+        return jsonify({"ok": False, "error": "Unauthorized"}), 401
+    return None
+
+
+# ---------------------------------------------------------------------------
+# API: Admin PIN endpoints
+# ---------------------------------------------------------------------------
+@app.route("/api/admin/status")
+def api_admin_status():
+    return jsonify({"pin_set": admin_pin.is_pin_set()})
+
+
+@app.route("/api/admin/set-pin", methods=["POST"])
+def api_admin_set_pin():
+    data = request.get_json(force=True)
+    pin = data.get("pin", "")
+    if len(pin) < 4:
+        return jsonify({"ok": False, "error": "PIN must be at least 4 characters"}), 400
+
+    if admin_pin.is_pin_set():
+        # Changing PIN — require existing session
+        err = _require_admin()
+        if err:
+            return err
+
+    admin_pin.set_pin(pin)
+    token = admin_pin.generate_session_token()
+    return jsonify({"ok": True, "token": token})
+
+
+@app.route("/api/admin/verify", methods=["POST"])
+def api_admin_verify():
+    data = request.get_json(force=True)
+    pin = data.get("pin", "")
+    if not admin_pin.verify_pin(pin):
+        return jsonify({"ok": False, "error": "Incorrect PIN"}), 403
+    token = admin_pin.generate_session_token()
+    return jsonify({"ok": True, "token": token})
+
+
+@app.route("/api/admin/lock", methods=["POST"])
+def api_admin_lock():
+    token = request.headers.get("X-Admin-Token", "")
+    admin_pin.clear_session(token)
+    return jsonify({"ok": True})
+
+
+# ---------------------------------------------------------------------------
 # API: Config
 # ---------------------------------------------------------------------------
 @app.route("/api/config", methods=["GET"])
 def api_config_get():
+    err = _require_admin()
+    if err:
+        return err
     return jsonify({
         "share_link": cfg.SHARE_LINK,
         "local_folder": cfg.LOCAL_FOLDER,
@@ -76,6 +136,9 @@ def api_config_get():
 
 @app.route("/api/config", methods=["POST"])
 def api_config_set():
+    err = _require_admin()
+    if err:
+        return err
     if manager.running:
         return jsonify({"ok": False, "error": "Stop sync before changing config"}), 409
 
@@ -247,6 +310,10 @@ except ImportError:
 def auth_login():
     if auth is None:
         return jsonify({"ok": False, "error": "msal not installed"}), 500
+    # Verify admin token from query param (browser redirect can't send headers)
+    token = request.args.get("admin_token", "")
+    if admin_pin.is_pin_set() and not admin_pin.validate_session(token):
+        return jsonify({"ok": False, "error": "Unauthorized"}), 401
     redirect_uri = request.url_root.rstrip("/") + "/auth/callback"
     url = auth.get_auth_url(redirect_uri)
     if url is None:
@@ -268,6 +335,9 @@ def auth_callback():
 def auth_logout():
     if auth is None:
         return jsonify({"ok": False, "error": "msal not installed"}), 500
+    err = _require_admin()
+    if err:
+        return err
     auth.logout()
     return jsonify({"ok": True})
 

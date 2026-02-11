@@ -102,14 +102,14 @@ $AppPy = "$InstallDir\app.py"
 $vbs = @"
 Set WshShell = CreateObject("WScript.Shell")
 WshShell.CurrentDirectory = "$InstallDir"
-WshShell.Run """$PythonW"" ""$AppPy""", 0, False
+WshShell.Run """$PythonW"" ""$AppPy"" --no-gui", 0, False
 "@
 $vbs | Out-File -FilePath $VbsPath -Encoding ascii
 
-# Start the server now
+# Start the headless server now
 Write-Host ""
 Write-Host "  Starting AutoSync..." -ForegroundColor Cyan
-Start-Process -FilePath "$PythonW" -ArgumentList "$AppPy" -WorkingDirectory $InstallDir -WindowStyle Hidden
+Start-Process -FilePath "$PythonW" -ArgumentList "$AppPy --no-gui" -WorkingDirectory $InstallDir -WindowStyle Hidden
 
 # Wait for server to be ready
 for ($i = 0; $i -lt 15; $i++) {
@@ -136,4 +136,6 @@ Write-Host ""
 Write-Host "  AutoSync will start automatically on login." -ForegroundColor Green
 Write-Host ""
 
-Start-Process "http://localhost:$Port"
+# Launch native app window (server is already running headless)
+$PythonExe = "$InstallDir\venv\Scripts\python.exe"
+Start-Process -FilePath "$PythonExe" -ArgumentList "$AppPy" -WorkingDirectory $InstallDir

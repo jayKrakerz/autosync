@@ -88,6 +88,7 @@ cat > "$PLIST_PATH" << PLIST
     <array>
         <string>${INSTALL_DIR}/venv/bin/python</string>
         <string>${INSTALL_DIR}/app.py</string>
+        <string>--no-gui</string>
     </array>
     <key>WorkingDirectory</key>
     <string>${INSTALL_DIR}</string>
@@ -133,6 +134,8 @@ echo "    3. Paste your OneDrive shared folder link in Settings"
 echo "    4. Click Start Sync"
 echo ""
 echo "  AutoSync will start automatically on login."
+echo "  Opening app window now..."
 echo ""
 
-open "http://localhost:$PORT"
+# Launch native app window (server is already running via LaunchAgent)
+"$INSTALL_DIR/venv/bin/python" "$INSTALL_DIR/app.py" &

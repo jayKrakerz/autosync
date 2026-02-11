@@ -485,5 +485,34 @@ def api_webhook_notify():
 # Entry point
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
-    logger.info("Starting AutoSync Web Dashboard on http://localhost:8050")
-    app.run(host="localhost", port=8050, threaded=True, debug=False)
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--no-gui", action="store_true", help="Run without native window (browser only)")
+    args = parser.parse_args()
+
+    if args.no_gui:
+        logger.info("Starting AutoSync Web Dashboard on http://localhost:8050")
+        app.run(host="localhost", port=8050, threaded=True, debug=False)
+    else:
+        try:
+            import webview
+
+            logger.info("Starting AutoSync as native app window")
+            server_thread = threading.Thread(
+                target=lambda: app.run(host="localhost", port=8050, threaded=True, debug=False),
+                daemon=True,
+            )
+            server_thread.start()
+            webview.create_window(
+                "AutoSync — RiskArena",
+                "http://localhost:8050",
+                width=1100,
+                height=750,
+                min_size=(800, 500),
+            )
+            webview.start()
+        except ImportError:
+            logger.info("pywebview not installed, falling back to browser mode")
+            logger.info("Starting AutoSync Web Dashboard on http://localhost:8050")
+            app.run(host="localhost", port=8050, threaded=True, debug=False)

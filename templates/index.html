@@ -1,0 +1,1218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoSync</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --red-50: #fef2f2;
+            --red-100: #fee2e2;
+            --red-200: #fecaca;
+            --red-300: #fca5a5;
+            --red-400: #f87171;
+            --red-500: #ef4444;
+            --red-600: #dc2626;
+            --red-700: #b91c1c;
+            --red-800: #991b1b;
+            --red-900: #7f1d1d;
+            --white: #ffffff;
+            --gray-50: #fafafa;
+            --gray-100: #f5f5f5;
+            --gray-200: #e5e5e5;
+            --gray-300: #d4d4d4;
+            --gray-400: #a3a3a3;
+            --gray-500: #737373;
+            --gray-600: #525252;
+            --gray-700: #404040;
+            --gray-800: #262626;
+            --gray-900: #171717;
+            --radius: 12px;
+            --radius-sm: 8px;
+            --radius-lg: 16px;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+            --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.05);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -4px rgba(0,0,0,0.04);
+            --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--gray-50);
+            color: var(--gray-800);
+            line-height: 1.5;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .app { display: flex; min-height: 100vh; }
+
+        .sidebar {
+            width: 240px;
+            background: var(--gray-900);
+            color: var(--white);
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0; left: 0; bottom: 0;
+            z-index: 100;
+        }
+
+        .sidebar-brand {
+            padding: 1.5rem 1.25rem;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .brand-icon {
+            width: 36px; height: 36px;
+            background: var(--red-600);
+            border-radius: var(--radius-sm);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800; font-size: 1rem;
+            letter-spacing: -0.02em; flex-shrink: 0;
+        }
+
+        .brand-text { font-size: 1.05rem; font-weight: 700; letter-spacing: -0.02em; }
+        .brand-sub { font-size: 0.65rem; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 500; }
+
+        .sidebar-nav { flex: 1; padding: 0.75rem; display: flex; flex-direction: column; gap: 2px; }
+
+        .nav-item {
+            display: flex; align-items: center; gap: 0.75rem;
+            padding: 0.65rem 0.75rem; border-radius: var(--radius-sm);
+            cursor: pointer; color: var(--gray-400);
+            font-size: 0.85rem; font-weight: 500;
+            transition: all var(--transition);
+            border: none; background: none; width: 100%; text-align: left;
+        }
+
+        .nav-item:hover { background: rgba(255,255,255,0.06); color: var(--gray-200); }
+        .nav-item.active { background: var(--red-600); color: var(--white); }
+        .nav-item svg { width: 18px; height: 18px; flex-shrink: 0; opacity: 0.7; }
+        .nav-item.active svg { opacity: 1; }
+
+        /* Health indicators in sidebar */
+        .sidebar-health {
+            padding: 0.5rem 1.25rem;
+            border-top: 1px solid rgba(255,255,255,0.08);
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+        }
+        .health-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .health-dot.green { background: #34d399; box-shadow: 0 0 6px rgba(52,211,153,0.5); }
+        .health-dot.yellow { background: #fbbf24; box-shadow: 0 0 6px rgba(251,191,36,0.5); }
+        .health-dot.red { background: #f87171; box-shadow: 0 0 6px rgba(248,113,113,0.5); }
+        .health-dot.gray { background: var(--gray-600); }
+        .health-label { font-size: 0.68rem; color: var(--gray-500); }
+        .health-value { font-size: 0.72rem; color: var(--gray-400); }
+
+        .sidebar-status {
+            padding: 1rem 1.25rem;
+            border-top: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .sidebar-status-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            display: inline-block; margin-right: 0.5rem;
+        }
+        .sidebar-status-dot.on { background: #34d399; box-shadow: 0 0 8px rgba(52,211,153,0.5); }
+        .sidebar-status-dot.off { background: var(--gray-600); }
+        .sidebar-status-text { font-size: 0.78rem; color: var(--gray-400); }
+
+        .main { margin-left: 240px; flex: 1; min-height: 100vh; }
+
+        .topbar {
+            background: var(--white);
+            border-bottom: 1px solid var(--gray-200);
+            padding: 0 2rem; height: 64px;
+            display: flex; align-items: center; justify-content: space-between;
+            position: sticky; top: 0; z-index: 50;
+        }
+
+        .topbar-title { font-size: 1.15rem; font-weight: 700; color: var(--gray-900); letter-spacing: -0.02em; }
+        .topbar-actions { display: flex; align-items: center; gap: 0.5rem; }
+
+        .content { padding: 1.75rem 2rem 3rem; }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+            padding: 0.55rem 1.1rem; border-radius: var(--radius-sm);
+            font-family: inherit; font-size: 0.82rem; font-weight: 600;
+            cursor: pointer; transition: all var(--transition);
+            border: 1px solid transparent; white-space: nowrap;
+        }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .btn-primary { background: var(--red-600); color: var(--white); border-color: var(--red-600); }
+        .btn-primary:hover:not(:disabled) { background: var(--red-700); border-color: var(--red-700); box-shadow: 0 0 0 3px rgba(220,38,38,0.15); }
+        .btn-secondary { background: var(--white); color: var(--gray-700); border-color: var(--gray-200); }
+        .btn-secondary:hover:not(:disabled) { background: var(--gray-50); border-color: var(--gray-300); }
+        .btn-danger-outline { background: transparent; color: var(--red-600); border-color: var(--red-200); }
+        .btn-danger-outline:hover:not(:disabled) { background: var(--red-50); border-color: var(--red-300); }
+        .btn-ghost { background: transparent; color: var(--gray-600); border-color: transparent; padding: 0.45rem 0.75rem; }
+        .btn-ghost:hover:not(:disabled) { background: var(--gray-100); color: var(--gray-800); }
+        .btn svg { width: 16px; height: 16px; }
+        .btn-sm { padding: 0.35rem 0.75rem; font-size: 0.78rem; }
+
+        /* Cards */
+        .card {
+            background: var(--white);
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-sm);
+            transition: box-shadow var(--transition);
+        }
+        .card-hover:hover { box-shadow: var(--shadow-md); }
+
+        /* Tabs */
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; animation: fadeIn 0.25s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+        /* Dashboard Status Grid */
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.75rem;
+        }
+
+        .status-card { padding: 1.25rem; }
+        .status-card .s-icon {
+            width: 40px; height: 40px; border-radius: var(--radius-sm);
+            display: flex; align-items: center; justify-content: center;
+            margin-bottom: 1rem;
+        }
+        .status-card .s-icon svg { width: 20px; height: 20px; }
+        .s-icon-red { background: var(--red-100); color: var(--red-600); }
+        .s-icon-gray { background: var(--gray-100); color: var(--gray-600); }
+        .status-card .s-label {
+            font-size: 0.72rem; font-weight: 600; color: var(--gray-400);
+            text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.35rem;
+        }
+        .status-card .s-value { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.03em; color: var(--gray-900); }
+        .status-card .s-value-sm { font-size: 0.95rem; font-weight: 600; }
+
+        .badge {
+            display: inline-flex; align-items: center; gap: 0.35rem;
+            padding: 0.2rem 0.65rem; border-radius: 20px;
+            font-size: 0.75rem; font-weight: 600;
+        }
+        .badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; }
+        .badge-ok { background: #ecfdf5; color: #059669; }
+        .badge-ok::before { background: #34d399; box-shadow: 0 0 6px rgba(52,211,153,0.6); }
+        .badge-off { background: var(--gray-100); color: var(--gray-500); }
+        .badge-off::before { background: var(--gray-400); }
+        .badge-err { background: var(--red-50); color: var(--red-700); }
+        .badge-err::before { background: var(--red-500); }
+
+        /* Stats bar */
+        .stats-bar { display: grid; grid-template-columns: repeat(4, 1fr); margin-bottom: 1.75rem; }
+        .stats-bar .card { border-radius: 0; border-right: none; }
+        .stats-bar .card:first-child { border-radius: var(--radius) 0 0 var(--radius); }
+        .stats-bar .card:last-child { border-radius: 0 var(--radius) var(--radius) 0; border-right: 1px solid var(--gray-200); }
+        .stat-cell { padding: 1.25rem 1.5rem; text-align: center; }
+        .stat-cell .stat-num { font-size: 2rem; font-weight: 800; letter-spacing: -0.04em; color: var(--gray-900); }
+        .stat-cell .stat-lbl { font-size: 0.7rem; font-weight: 600; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 0.2rem; }
+
+        .controls-row { display: flex; align-items: center; gap: 0.5rem; }
+
+        .dash-error {
+            margin-top: 1rem; padding: 0.75rem 1rem;
+            background: var(--red-50); border: 1px solid var(--red-200);
+            border-radius: var(--radius-sm); color: var(--red-700);
+            font-size: 0.82rem; font-weight: 500; display: none;
+        }
+
+        /* Progress bar */
+        .progress-bar-wrap {
+            margin-top: 1rem; display: none;
+        }
+        .progress-bar-label {
+            font-size: 0.78rem; color: var(--gray-600); margin-bottom: 0.35rem;
+            display: flex; justify-content: space-between;
+        }
+        .progress-bar-outer {
+            height: 6px; background: var(--gray-200); border-radius: 3px; overflow: hidden;
+        }
+        .progress-bar-inner {
+            height: 100%; background: var(--red-500); border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+
+        /* Tables */
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+        table thead th {
+            background: var(--gray-50); font-weight: 600; font-size: 0.7rem;
+            text-transform: uppercase; letter-spacing: 0.06em; color: var(--gray-500);
+            padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--gray-200);
+            white-space: nowrap;
+        }
+        table tbody td { padding: 0.7rem 1rem; border-bottom: 1px solid var(--gray-100); color: var(--gray-700); }
+        table tbody tr:hover td { background: var(--red-50); }
+        table tbody tr:last-child td { border-bottom: none; }
+
+        .table-toolbar {
+            padding: 1rem; display: flex; align-items: center; gap: 0.75rem;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .search-input {
+            flex: 1; max-width: 320px;
+            padding: 0.5rem 0.85rem 0.5rem 2.25rem;
+            border: 1px solid var(--gray-200); border-radius: var(--radius-sm);
+            font-family: inherit; font-size: 0.82rem;
+            background: var(--gray-50) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23a3a3a3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") no-repeat 0.75rem center;
+            transition: all var(--transition); outline: none;
+        }
+        .search-input:focus { border-color: var(--red-400); background-color: var(--white); box-shadow: 0 0 0 3px rgba(220,38,38,0.1); }
+
+        .empty-state { padding: 3rem 1rem; text-align: center; color: var(--gray-400); font-size: 0.85rem; }
+        .empty-state svg { width: 40px; height: 40px; margin-bottom: 0.75rem; opacity: 0.3; }
+
+        /* Logs */
+        .log-toolbar {
+            padding: 0.75rem 1rem; display: flex; align-items: center; gap: 0.75rem;
+            border-bottom: 1px solid var(--gray-200); flex-wrap: wrap;
+        }
+        .log-toolbar select {
+            padding: 0.35rem 0.6rem; border: 1px solid var(--gray-200);
+            border-radius: 6px; font-family: inherit; font-size: 0.78rem;
+            background: var(--white); outline: none; cursor: pointer;
+        }
+        .log-toolbar select:focus { border-color: var(--red-400); }
+        .log-toolbar label {
+            font-size: 0.78rem; color: var(--gray-600);
+            display: flex; align-items: center; gap: 0.4rem; cursor: pointer;
+        }
+        .log-toolbar input[type="checkbox"] { accent-color: var(--red-600); width: 14px; height: 14px; }
+
+        #log-container {
+            background: #0f0f13; color: #b4bcd0;
+            font-family: 'SF Mono', 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+            font-size: 0.75rem; line-height: 1.7;
+            padding: 1rem 1.25rem; height: 460px;
+            overflow-y: auto; white-space: pre-wrap; word-break: break-all;
+        }
+        #log-container::-webkit-scrollbar { width: 6px; }
+        #log-container::-webkit-scrollbar-track { background: transparent; }
+        #log-container::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 3px; }
+        .log-ERROR { color: #ff6b6b; }
+        .log-WARNING { color: #fbbf24; }
+        .log-INFO { color: #93c5fd; }
+        .log-DEBUG { color: #6b7280; }
+
+        /* Settings */
+        .settings-section { max-width: 560px; }
+        .field-group { margin-bottom: 1.5rem; }
+        .field-group label {
+            display: block; font-size: 0.8rem; font-weight: 600;
+            color: var(--gray-700); margin-bottom: 0.4rem;
+        }
+        .field-group .field-hint { font-size: 0.72rem; color: var(--gray-400); margin-top: 0.3rem; }
+        .field-input {
+            width: 100%; padding: 0.6rem 0.85rem;
+            border: 1px solid var(--gray-200); border-radius: var(--radius-sm);
+            font-family: inherit; font-size: 0.85rem; color: var(--gray-800);
+            background: var(--white); transition: all var(--transition); outline: none;
+        }
+        .field-input:focus { border-color: var(--red-400); box-shadow: 0 0 0 3px rgba(220,38,38,0.1); }
+        .field-input:disabled { background: var(--gray-100); color: var(--gray-500); }
+
+        textarea.field-input { min-height: 80px; resize: vertical; font-family: 'SF Mono', monospace; font-size: 0.8rem; }
+
+        .field-row { display: flex; gap: 0.5rem; align-items: stretch; }
+        .field-row .field-input { flex: 1; }
+
+        .settings-warning {
+            background: var(--red-50); border: 1px solid var(--red-200); color: var(--red-700);
+            padding: 0.65rem 1rem; border-radius: var(--radius-sm); margin-bottom: 1.5rem;
+            font-size: 0.82rem; font-weight: 500; display: none;
+            align-items: center; gap: 0.5rem;
+        }
+        .settings-warning svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+        .config-toast { font-size: 0.82rem; font-weight: 500; margin-top: 0.75rem; min-height: 1.2em; }
+        .toast-ok { color: #059669; }
+        .toast-err { color: var(--red-600); }
+
+        /* Toggle switch */
+        .toggle-wrap {
+            display: flex; align-items: center; gap: 0.75rem;
+            padding: 0.75rem 0;
+        }
+        .toggle-wrap .toggle-label {
+            font-size: 0.82rem; font-weight: 500; color: var(--gray-700);
+        }
+        .toggle {
+            position: relative; width: 40px; height: 22px;
+            background: var(--gray-300); border-radius: 11px;
+            cursor: pointer; transition: background var(--transition);
+            border: none; padding: 0;
+        }
+        .toggle::after {
+            content: ''; position: absolute; top: 2px; left: 2px;
+            width: 18px; height: 18px; border-radius: 50%;
+            background: var(--white); box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+            transition: transform var(--transition);
+        }
+        .toggle.on { background: var(--red-500); }
+        .toggle.on::after { transform: translateX(18px); }
+        .toggle:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        /* History status badges */
+        .status-badge {
+            display: inline-block; padding: 0.1rem 0.5rem;
+            border-radius: 10px; font-size: 0.7rem; font-weight: 600;
+        }
+        .status-badge.ok { background: #ecfdf5; color: #059669; }
+        .status-badge.error { background: var(--red-50); color: var(--red-700); }
+        .status-badge.retry_failed { background: #fef3c7; color: #92400e; }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .sidebar { display: none; }
+            .main { margin-left: 0; }
+            .status-grid { grid-template-columns: repeat(2, 1fr); }
+            .stats-bar { grid-template-columns: 1fr; }
+            .stats-bar .card { border-radius: 0 !important; border-right: 1px solid var(--gray-200); border-bottom: none; }
+            .stats-bar .card:first-child { border-radius: var(--radius) var(--radius) 0 0 !important; }
+            .stats-bar .card:last-child { border-radius: 0 0 var(--radius) var(--radius) !important; border-bottom: 1px solid var(--gray-200); }
+            .content { padding: 1.25rem; }
+        }
+        @media (max-width: 600px) { .status-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="brand-icon">A</div>
+                <div>
+                    <div class="brand-text">AutoSync</div>
+                    <div class="brand-sub">OneDrive Sync</div>
+                </div>
+            </div>
+            <nav class="sidebar-nav">
+                <button class="nav-item active" data-tab="dashboard">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                    Dashboard
+                </button>
+                <button class="nav-item" data-tab="files">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+                    Files
+                </button>
+                <button class="nav-item" data-tab="conflicts">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                    Conflicts
+                </button>
+                <button class="nav-item" data-tab="history">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    History
+                </button>
+                <button class="nav-item" data-tab="logs">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+                    Logs
+                </button>
+                <button class="nav-item" data-tab="settings">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+                    Settings
+                </button>
+            </nav>
+
+            <!-- Health indicators -->
+            <div class="sidebar-health" id="sidebar-health">
+                <div>
+                    <span class="health-dot gray" id="health-token-dot"></span>
+                </div>
+                <div>
+                    <div class="health-label">Token</div>
+                    <div class="health-value" id="health-token-text">--</div>
+                </div>
+                <div>
+                    <span class="health-dot gray" id="health-api-dot"></span>
+                </div>
+                <div>
+                    <div class="health-label">API</div>
+                    <div class="health-value" id="health-api-text">--</div>
+                </div>
+            </div>
+
+            <div class="sidebar-status" id="sidebar-auth" style="border-top: 1px solid rgba(255,255,255,0.08); padding: 0.75rem 1.25rem;">
+                <div style="font-size:0.68rem;font-weight:600;color:var(--gray-500);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.35rem;">Account</div>
+                <div id="sidebar-auth-text" style="font-size:0.78rem;color:var(--gray-400);">Not signed in</div>
+            </div>
+            <div class="sidebar-status">
+                <span class="sidebar-status-dot off" id="sidebar-dot"></span>
+                <span class="sidebar-status-text" id="sidebar-status-text">Stopped</span>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="main">
+            <header class="topbar">
+                <div class="topbar-title" id="topbar-title">Dashboard</div>
+                <div class="topbar-actions" id="topbar-actions">
+                    <button class="btn btn-primary btn-sm" id="btn-start">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        Start
+                    </button>
+                    <button class="btn btn-secondary btn-sm" id="btn-stop" disabled>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+                        Stop
+                    </button>
+                    <button class="btn btn-ghost btn-sm" id="btn-trigger" disabled>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+                        Sync Now
+                    </button>
+                </div>
+            </header>
+
+            <div class="content">
+                <!-- Dashboard Tab -->
+                <section id="tab-dashboard" class="tab-panel active">
+                    <div class="status-grid">
+                        <div class="status-card card">
+                            <div class="s-icon s-icon-red">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0114.08 0"/><path d="M1.42 9a16 16 0 0121.16 0"/><path d="M8.53 16.11a6 6 0 016.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+                            </div>
+                            <div class="s-label">Connection</div>
+                            <div class="s-value s-value-sm" id="st-connection"><span class="badge badge-off">Disconnected</span></div>
+                        </div>
+                        <div class="status-card card">
+                            <div class="s-icon s-icon-red">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            </div>
+                            <div class="s-label">Engine</div>
+                            <div class="s-value s-value-sm" id="st-engine"><span class="badge badge-off">Stopped</span></div>
+                        </div>
+                        <div class="status-card card">
+                            <div class="s-icon s-icon-gray">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+                            </div>
+                            <div class="s-label">Last Sync</div>
+                            <div class="s-value s-value-sm" id="st-last-sync">--</div>
+                        </div>
+                        <div class="status-card card">
+                            <div class="s-icon s-icon-gray">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            </div>
+                            <div class="s-label">Next Sync</div>
+                            <div class="s-value s-value-sm" id="st-next-sync">--</div>
+                        </div>
+                    </div>
+
+                    <div class="stats-bar">
+                        <div class="card">
+                            <div class="stat-cell">
+                                <div class="stat-num" id="stat-files">0</div>
+                                <div class="stat-lbl">Files Synced</div>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="stat-cell">
+                                <div class="stat-num" id="stat-interval">--</div>
+                                <div class="stat-lbl">Poll Interval</div>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="stat-cell">
+                                <div class="stat-num" id="stat-conflicts">0</div>
+                                <div class="stat-lbl">Conflicts</div>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="stat-cell">
+                                <div class="stat-num" id="stat-retry">0</div>
+                                <div class="stat-lbl">Retry Queue</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Progress bar -->
+                    <div class="progress-bar-wrap" id="progress-wrap">
+                        <div class="progress-bar-label">
+                            <span id="progress-file">--</span>
+                            <span id="progress-pct">0%</span>
+                        </div>
+                        <div class="progress-bar-outer">
+                            <div class="progress-bar-inner" id="progress-bar" style="width:0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="dash-error" id="dash-error"></div>
+                </section>
+
+                <!-- Files Tab -->
+                <section id="tab-files" class="tab-panel">
+                    <div class="card">
+                        <div class="table-toolbar">
+                            <input type="search" class="search-input" id="file-search" placeholder="Search files...">
+                            <button class="btn btn-secondary btn-sm" id="btn-refresh-files">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+                                Refresh
+                            </button>
+                        </div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead><tr><th>Path</th><th>Size</th><th>Local Modified</th><th>Remote Modified</th><th>Synced At</th></tr></thead>
+                                <tbody id="files-tbody"><tr><td colspan="5" class="empty-state">No files synced yet.</td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Conflicts Tab -->
+                <section id="tab-conflicts" class="tab-panel">
+                    <div class="card">
+                        <div class="table-toolbar">
+                            <div style="flex:1;font-size:0.82rem;color:var(--gray-500)">Files with version conflicts</div>
+                            <button class="btn btn-secondary btn-sm" id="btn-refresh-conflicts">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+                                Refresh
+                            </button>
+                        </div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead><tr><th>Conflict File</th><th>Original Name</th><th>Size</th><th>Modified</th></tr></thead>
+                                <tbody id="conflicts-tbody"><tr><td colspan="4" class="empty-state">No conflicts found.</td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- History Tab -->
+                <section id="tab-history" class="tab-panel">
+                    <div class="card">
+                        <div class="table-toolbar">
+                            <div style="flex:1;font-size:0.82rem;color:var(--gray-500)">Recent sync events</div>
+                            <button class="btn btn-secondary btn-sm" id="btn-refresh-history">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+                                Refresh
+                            </button>
+                        </div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead><tr><th>Timestamp</th><th>Action</th><th>File</th><th>Status</th><th>Size</th><th>Duration</th></tr></thead>
+                                <tbody id="history-tbody"><tr><td colspan="6" class="empty-state">No history yet.</td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Logs Tab -->
+                <section id="tab-logs" class="tab-panel">
+                    <div class="card" style="overflow:hidden;">
+                        <div class="log-toolbar">
+                            <select id="log-level-filter">
+                                <option value="ALL">All Levels</option>
+                                <option value="DEBUG">DEBUG</option>
+                                <option value="INFO" selected>INFO+</option>
+                                <option value="WARNING">WARNING+</option>
+                                <option value="ERROR">ERROR</option>
+                            </select>
+                            <label><input type="checkbox" id="log-autoscroll" checked> Auto-scroll</label>
+                            <div style="flex:1"></div>
+                            <button class="btn btn-ghost btn-sm" id="btn-clear-logs">Clear</button>
+                        </div>
+                        <div id="log-container"></div>
+                    </div>
+                </section>
+
+                <!-- Settings Tab -->
+                <section id="tab-settings" class="tab-panel">
+                    <div class="settings-section">
+                        <div class="settings-warning" id="settings-warning">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                            Stop sync before changing settings.
+                        </div>
+
+                        <!-- Microsoft Account -->
+                        <div class="card" style="padding: 1.5rem; margin-bottom: 1.5rem;">
+                            <div style="font-size:0.85rem;font-weight:700;color:var(--gray-800);margin-bottom:1.25rem;">Microsoft Account</div>
+                            <div id="auth-status-section" style="margin-bottom:1.25rem;">
+                                <div id="auth-status-display" style="display:flex;align-items:center;gap:0.75rem;padding:0.75rem 1rem;background:var(--gray-50);border-radius:var(--radius-sm);margin-bottom:0.75rem;">
+                                    <span id="auth-status-dot" style="width:8px;height:8px;border-radius:50%;background:var(--gray-400);flex-shrink:0;"></span>
+                                    <span id="auth-status-text" style="font-size:0.82rem;color:var(--gray-600);flex:1;">Not signed in</span>
+                                </div>
+                                <div style="display:flex;gap:0.5rem;">
+                                    <a href="/auth/login" class="btn btn-primary btn-sm" id="btn-ms-signin">Sign In with Microsoft</a>
+                                    <button class="btn btn-danger-outline btn-sm" id="btn-ms-signout" style="display:none;">Sign Out</button>
+                                </div>
+                            </div>
+                            <div class="field-group">
+                                <label for="cfg-client-id">Application (Client) ID</label>
+                                <input type="text" class="field-input" id="cfg-client-id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+                                <div class="field-hint">From Azure App Registration.</div>
+                            </div>
+                            <div class="field-group">
+                                <label for="cfg-tenant-id">Tenant ID</label>
+                                <input type="text" class="field-input" id="cfg-tenant-id" placeholder="consumers">
+                                <div class="field-hint">"consumers" for personal, "common" for both, or a specific tenant ID.</div>
+                            </div>
+                            <details style="margin-top:0.5rem;">
+                                <summary style="font-size:0.78rem;color:var(--gray-500);cursor:pointer;font-weight:500;">Setup Instructions</summary>
+                                <ol style="font-size:0.78rem;color:var(--gray-500);margin-top:0.5rem;padding-left:1.25rem;line-height:1.8;">
+                                    <li>Go to <strong>Azure Portal</strong> &rarr; App registrations &rarr; New registration</li>
+                                    <li>Name: <em>AutoSync</em>, Supported account types: <em>Accounts in this organizational directory only</em></li>
+                                    <li>Redirect URI: <strong>Mobile and desktop applications</strong> &rarr; <code>http://localhost:8050/auth/callback</code></li>
+                                    <li>Under <strong>Authentication</strong>, enable "Allow public client flows"</li>
+                                    <li>Under <strong>API permissions</strong>, add: <code>Files.ReadWrite.All</code>, <code>Sites.ReadWrite.All</code> (Delegated)</li>
+                                    <li>Copy the <strong>Application (client) ID</strong> and <strong>Directory (tenant) ID</strong> into the fields above</li>
+                                    <li>Click <strong>Save Settings</strong>, then <strong>Sign In with Microsoft</strong></li>
+                                </ol>
+                            </details>
+                        </div>
+
+                        <!-- Sync Configuration -->
+                        <div class="card" style="padding: 1.5rem; margin-bottom: 1.5rem;">
+                            <div style="font-size:0.85rem;font-weight:700;color:var(--gray-800);margin-bottom:1.25rem;">Sync Configuration</div>
+                            <div class="field-group">
+                                <label for="cfg-share-link">OneDrive Share Link</label>
+                                <div class="field-row">
+                                    <input type="url" class="field-input" id="cfg-share-link" placeholder="https://...">
+                                    <button class="btn btn-secondary btn-sm" id="btn-validate" style="align-self:stretch;">Validate</button>
+                                </div>
+                                <div class="field-hint" id="validate-result"></div>
+                            </div>
+                            <div class="field-group">
+                                <label for="cfg-local-folder">Local Sync Folder</label>
+                                <input type="text" class="field-input" id="cfg-local-folder" placeholder="/path/to/folder">
+                            </div>
+                            <div class="field-group">
+                                <label for="cfg-poll-interval">Poll Interval (seconds)</label>
+                                <input type="number" class="field-input" id="cfg-poll-interval" min="10" step="1" style="max-width:160px;">
+                            </div>
+                            <div class="field-group">
+                                <label for="cfg-max-workers">Parallel Transfer Workers</label>
+                                <input type="number" class="field-input" id="cfg-max-workers" min="1" max="16" step="1" style="max-width:100px;">
+                                <div class="field-hint">Number of concurrent upload/download threads (default: 4).</div>
+                            </div>
+                        </div>
+
+                        <!-- File Filtering -->
+                        <div class="card" style="padding: 1.5rem; margin-bottom: 1.5rem;">
+                            <div style="font-size:0.85rem;font-weight:700;color:var(--gray-800);margin-bottom:1.25rem;">File Filtering</div>
+                            <div class="field-group">
+                                <label for="cfg-ignore-patterns">Ignore Patterns</label>
+                                <textarea class="field-input" id="cfg-ignore-patterns" placeholder="~$*&#10;*.tmp&#10;.DS_Store"></textarea>
+                                <div class="field-hint">One fnmatch pattern per line. Files matching these patterns will be skipped.</div>
+                            </div>
+                            <div class="field-group">
+                                <label for="cfg-sync-folders">Include Folders (selective sync)</label>
+                                <textarea class="field-input" id="cfg-sync-folders" placeholder="Leave empty to sync all folders&#10;folder1&#10;folder2/subfolder"></textarea>
+                                <div class="field-hint">One path per line. Empty = sync everything. Only these folders will be synced.</div>
+                            </div>
+                            <div class="field-group">
+                                <label for="cfg-exclude-folders">Exclude Folders</label>
+                                <textarea class="field-input" id="cfg-exclude-folders" placeholder="archive&#10;temp"></textarea>
+                                <div class="field-hint">One path per line. These folders will always be excluded from sync.</div>
+                            </div>
+                        </div>
+
+                        <!-- System -->
+                        <div class="card" style="padding: 1.5rem; margin-bottom: 1.5rem;">
+                            <div style="font-size:0.85rem;font-weight:700;color:var(--gray-800);margin-bottom:1.25rem;">System</div>
+                            <div class="toggle-wrap">
+                                <button class="toggle" id="toggle-notifications" type="button"></button>
+                                <span class="toggle-label">Desktop Notifications</span>
+                            </div>
+                            <div class="toggle-wrap">
+                                <button class="toggle" id="toggle-autostart" type="button"></button>
+                                <span class="toggle-label">Start on Login (LaunchAgent)</span>
+                            </div>
+                            <div id="autostart-status" style="font-size:0.72rem;color:var(--gray-400);margin-top:0.25rem;"></div>
+                        </div>
+
+                        <button class="btn btn-primary" id="btn-save-config">Save Settings</button>
+                        <div class="config-toast" id="config-result"></div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ====================================================================
+    // Tab Navigation
+    // ====================================================================
+    const navItems = document.querySelectorAll('.nav-item');
+    const tabPanels = document.querySelectorAll('.tab-panel');
+    const topbarTitle = document.getElementById('topbar-title');
+    const tabNames = { dashboard: 'Dashboard', files: 'Files', conflicts: 'Conflicts', history: 'History', logs: 'Logs', settings: 'Settings' };
+
+    function switchTab(name) {
+        navItems.forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+        tabPanels.forEach(p => p.classList.toggle('active', p.id === 'tab-' + name));
+        topbarTitle.textContent = tabNames[name] || name;
+        if (name === 'files') loadFiles();
+        if (name === 'conflicts') loadConflicts();
+        if (name === 'history') loadHistory();
+        if (name === 'settings') loadConfig();
+    }
+
+    navItems.forEach(btn => {
+        btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+    });
+
+    // ====================================================================
+    // Helpers
+    // ====================================================================
+    function formatSize(bytes) {
+        if (bytes == null || bytes === 0) return '0 B';
+        const units = ['B', 'KB', 'MB', 'GB'];
+        let i = 0, size = bytes;
+        while (size >= 1024 && i < units.length - 1) { size /= 1024; i++; }
+        return size.toFixed(i > 0 ? 1 : 0) + ' ' + units[i];
+    }
+
+    function formatTime(iso) {
+        if (!iso) return '--';
+        return new Date(iso).toLocaleString();
+    }
+
+    function timeAgo(iso) {
+        if (!iso) return '--';
+        const diff = (Date.now() - new Date(iso).getTime()) / 1000;
+        if (diff < 60) return Math.floor(diff) + 's ago';
+        if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+        if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+        return Math.floor(diff / 86400) + 'd ago';
+    }
+
+    function countdown(iso) {
+        if (!iso) return '--';
+        const diff = (new Date(iso).getTime() - Date.now()) / 1000;
+        if (diff <= 0) return 'now';
+        if (diff < 60) return Math.floor(diff) + 's';
+        return Math.floor(diff / 60) + 'm ' + Math.floor(diff % 60) + 's';
+    }
+
+    async function api(path, opts) {
+        const resp = await fetch(path, opts);
+        return resp.json();
+    }
+
+    function esc(s) {
+        if (!s) return '';
+        const d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
+
+    // ====================================================================
+    // Dashboard — Status Polling
+    // ====================================================================
+    async function refreshStatus() {
+        try {
+            const s = await api('/api/status');
+
+            document.getElementById('st-connection').innerHTML = s.connected
+                ? '<span class="badge badge-ok">Connected</span>'
+                : '<span class="badge badge-off">Disconnected</span>';
+
+            document.getElementById('st-engine').innerHTML = s.running
+                ? '<span class="badge badge-ok">Running</span>'
+                : '<span class="badge badge-off">Stopped</span>';
+
+            document.getElementById('st-last-sync').textContent = timeAgo(s.last_sync);
+            document.getElementById('st-next-sync').textContent = s.running ? countdown(s.next_sync) : '--';
+
+            document.getElementById('stat-files').textContent = s.file_count;
+            document.getElementById('stat-interval').textContent = s.poll_interval + 's';
+            document.getElementById('stat-retry').textContent = s.retry_count || 0;
+
+            document.getElementById('btn-start').disabled = s.running;
+            document.getElementById('btn-stop').disabled = !s.running;
+            document.getElementById('btn-trigger').disabled = !s.running;
+
+            // Sidebar status
+            const dot = document.getElementById('sidebar-dot');
+            const stxt = document.getElementById('sidebar-status-text');
+            if (s.running) {
+                dot.className = 'sidebar-status-dot on';
+                stxt.textContent = 'Sync Running';
+            } else {
+                dot.className = 'sidebar-status-dot off';
+                stxt.textContent = 'Stopped';
+            }
+
+            const errEl = document.getElementById('dash-error');
+            if (s.error) {
+                errEl.textContent = s.error;
+                errEl.style.display = 'block';
+            } else {
+                errEl.style.display = 'none';
+            }
+
+            // Progress bar
+            const op = s.current_op || {};
+            const progressWrap = document.getElementById('progress-wrap');
+            if (op.file) {
+                progressWrap.style.display = 'block';
+                document.getElementById('progress-file').textContent =
+                    (op.action === 'upload' ? 'Uploading' : 'Downloading') + ': ' + op.file;
+                document.getElementById('progress-pct').textContent = op.progress_pct + '%';
+                document.getElementById('progress-bar').style.width = op.progress_pct + '%';
+            } else {
+                progressWrap.style.display = 'none';
+            }
+
+            document.getElementById('settings-warning').style.display = s.running ? 'flex' : 'none';
+            document.querySelectorAll('.settings-section .field-input, .settings-section textarea, #btn-save-config').forEach(el => {
+                el.disabled = s.running;
+            });
+        } catch (e) {
+            console.error('Status poll failed:', e);
+        }
+    }
+
+    async function refreshConflictCount() {
+        try {
+            const data = await api('/api/conflicts');
+            document.getElementById('stat-conflicts').textContent = (data.conflicts || []).length;
+        } catch (e) { /* ignore */ }
+    }
+
+    setInterval(refreshStatus, 3000);
+    setInterval(refreshConflictCount, 10000);
+    refreshStatus();
+    refreshConflictCount();
+
+    // ====================================================================
+    // Health Indicators
+    // ====================================================================
+    async function refreshHealth() {
+        try {
+            const h = await api('/api/health');
+            // Token health
+            const tokenDot = document.getElementById('health-token-dot');
+            const tokenText = document.getElementById('health-token-text');
+            if (h.token_expires_in != null) {
+                const mins = Math.floor(h.token_expires_in / 60);
+                tokenText.textContent = mins + 'm';
+                tokenDot.className = 'health-dot ' + (mins > 10 ? 'green' : mins > 2 ? 'yellow' : 'red');
+            } else {
+                tokenText.textContent = '--';
+                tokenDot.className = 'health-dot gray';
+            }
+            // API health
+            const apiDot = document.getElementById('health-api-dot');
+            const apiText = document.getElementById('health-api-text');
+            const rate = h.api_error_rate_5min || 0;
+            apiText.textContent = rate + '%';
+            apiDot.className = 'health-dot ' + (rate === 0 ? 'green' : rate < 20 ? 'yellow' : 'red');
+        } catch (e) { /* ignore */ }
+    }
+    setInterval(refreshHealth, 10000);
+    refreshHealth();
+
+    // ====================================================================
+    // Dashboard — Controls
+    // ====================================================================
+    document.getElementById('btn-start').addEventListener('click', async () => {
+        const r = await api('/api/sync/start', { method: 'POST' });
+        if (!r.ok) alert(r.error || 'Start failed');
+        refreshStatus();
+    });
+
+    document.getElementById('btn-stop').addEventListener('click', async () => {
+        const r = await api('/api/sync/stop', { method: 'POST' });
+        if (!r.ok) alert(r.error || 'Stop failed');
+        refreshStatus();
+    });
+
+    document.getElementById('btn-trigger').addEventListener('click', async () => {
+        const r = await api('/api/sync/trigger', { method: 'POST' });
+        if (!r.ok) alert(r.error || 'Trigger failed');
+    });
+
+    // ====================================================================
+    // Files Tab
+    // ====================================================================
+    let allFiles = [];
+
+    async function loadFiles() {
+        const data = await api('/api/files');
+        allFiles = data.files || [];
+        renderFiles(allFiles);
+    }
+
+    function renderFiles(files) {
+        const tbody = document.getElementById('files-tbody');
+        if (files.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No files synced yet.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = files.map(f => `<tr>
+            <td style="font-weight:500;color:var(--gray-800)">${esc(f.path)}</td>
+            <td>${formatSize(f.size)}</td>
+            <td>${formatTime(f.local_mtime)}</td>
+            <td>${formatTime(f.remote_mtime)}</td>
+            <td>${formatTime(f.synced_at)}</td>
+        </tr>`).join('');
+    }
+
+    document.getElementById('file-search').addEventListener('input', (e) => {
+        const q = e.target.value.toLowerCase();
+        renderFiles(allFiles.filter(f => f.path.toLowerCase().includes(q)));
+    });
+
+    document.getElementById('btn-refresh-files').addEventListener('click', loadFiles);
+
+    // ====================================================================
+    // Conflicts Tab
+    // ====================================================================
+    async function loadConflicts() {
+        const data = await api('/api/conflicts');
+        const conflicts = data.conflicts || [];
+        const tbody = document.getElementById('conflicts-tbody');
+        if (conflicts.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No conflicts found.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = conflicts.map(c => `<tr>
+            <td style="font-weight:500;color:var(--gray-800)">${esc(c.path)}</td>
+            <td>${esc(c.original)}</td>
+            <td>${formatSize(c.size)}</td>
+            <td>${formatTime(c.mtime)}</td>
+        </tr>`).join('');
+    }
+
+    document.getElementById('btn-refresh-conflicts').addEventListener('click', loadConflicts);
+
+    // ====================================================================
+    // History Tab
+    // ====================================================================
+    async function loadHistory() {
+        const data = await api('/api/history?limit=100');
+        const history = data.history || [];
+        const tbody = document.getElementById('history-tbody');
+        if (history.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No history yet.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = history.map(h => {
+            const statusClass = h.status === 'ok' ? 'ok' : h.status === 'error' ? 'error' : 'retry_failed';
+            return `<tr>
+                <td>${esc(h.timestamp)}</td>
+                <td style="font-weight:500">${esc(h.action)}</td>
+                <td style="font-weight:500;color:var(--gray-800)">${esc(h.path)}</td>
+                <td><span class="status-badge ${statusClass}">${esc(h.status)}</span></td>
+                <td>${h.size != null ? formatSize(h.size) : '--'}</td>
+                <td>${h.duration_ms != null ? h.duration_ms + 'ms' : '--'}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    document.getElementById('btn-refresh-history').addEventListener('click', loadHistory);
+
+    // ====================================================================
+    // Logs Tab — SSE
+    // ====================================================================
+    const logContainer = document.getElementById('log-container');
+    const logFilter = document.getElementById('log-level-filter');
+    const logAutoScroll = document.getElementById('log-autoscroll');
+    const LOG_LEVELS = { 'DEBUG': 0, 'INFO': 1, 'WARNING': 2, 'ERROR': 3 };
+    let logEntries = [];
+
+    function getMinLevel() {
+        const v = logFilter.value;
+        if (v === 'ALL') return 0;
+        return LOG_LEVELS[v] || 0;
+    }
+
+    function renderLogEntry(entry) {
+        const minLevel = getMinLevel();
+        if ((LOG_LEVELS[entry.level] || 0) < minLevel) return '';
+        return `<div class="log-${entry.level}">${esc(entry.formatted)}</div>`;
+    }
+
+    function renderAllLogs() {
+        logContainer.innerHTML = logEntries.map(renderLogEntry).join('');
+        if (logAutoScroll.checked) logContainer.scrollTop = logContainer.scrollHeight;
+    }
+
+    logFilter.addEventListener('change', renderAllLogs);
+
+    document.getElementById('btn-clear-logs').addEventListener('click', () => {
+        logEntries = [];
+        logContainer.innerHTML = '';
+    });
+
+    function connectSSE() {
+        const es = new EventSource('/api/logs/stream');
+        es.onmessage = (event) => {
+            try {
+                const entry = JSON.parse(event.data);
+                logEntries.push(entry);
+                if (logEntries.length > 500) logEntries.shift();
+                const html = renderLogEntry(entry);
+                if (html) {
+                    logContainer.insertAdjacentHTML('beforeend', html);
+                    while (logContainer.children.length > 500) logContainer.removeChild(logContainer.firstChild);
+                    if (logAutoScroll.checked) logContainer.scrollTop = logContainer.scrollHeight;
+                }
+            } catch (e) { /* ignore */ }
+        };
+        es.onerror = () => { es.close(); setTimeout(connectSSE, 3000); };
+    }
+    connectSSE();
+
+    // ====================================================================
+    // Settings Tab
+    // ====================================================================
+    async function loadConfig() {
+        const data = await api('/api/config');
+        document.getElementById('cfg-share-link').value = data.share_link || '';
+        document.getElementById('cfg-local-folder').value = data.local_folder || '';
+        document.getElementById('cfg-poll-interval').value = data.poll_interval || 300;
+        document.getElementById('cfg-client-id').value = data.client_id || '';
+        document.getElementById('cfg-tenant-id').value = data.tenant_id || 'consumers';
+        document.getElementById('cfg-max-workers').value = data.max_workers || 4;
+        document.getElementById('cfg-ignore-patterns').value = (data.ignore_patterns || []).join('\n');
+        document.getElementById('cfg-sync-folders').value = (data.sync_folders || []).join('\n');
+        document.getElementById('cfg-exclude-folders').value = (data.exclude_folders || []).join('\n');
+
+        // Notifications toggle
+        const notifToggle = document.getElementById('toggle-notifications');
+        notifToggle.classList.toggle('on', data.notifications_enabled !== false);
+
+        // Autostart status
+        try {
+            const as = await api('/api/autostart/status');
+            const asToggle = document.getElementById('toggle-autostart');
+            asToggle.classList.toggle('on', as.installed);
+            document.getElementById('autostart-status').textContent =
+                as.installed ? 'LaunchAgent installed' : 'Not installed';
+        } catch (e) { /* ignore */ }
+    }
+
+    document.getElementById('btn-save-config').addEventListener('click', async () => {
+        const notifOn = document.getElementById('toggle-notifications').classList.contains('on');
+        const body = {
+            share_link: document.getElementById('cfg-share-link').value,
+            local_folder: document.getElementById('cfg-local-folder').value,
+            poll_interval: document.getElementById('cfg-poll-interval').value,
+            client_id: document.getElementById('cfg-client-id').value,
+            tenant_id: document.getElementById('cfg-tenant-id').value,
+            max_workers: document.getElementById('cfg-max-workers').value,
+            ignore_patterns: document.getElementById('cfg-ignore-patterns').value,
+            sync_folders: document.getElementById('cfg-sync-folders').value,
+            exclude_folders: document.getElementById('cfg-exclude-folders').value,
+            notifications_enabled: notifOn,
+        };
+        const r = await api('/api/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+        const el = document.getElementById('config-result');
+        if (r.ok) {
+            el.className = 'config-toast toast-ok';
+            el.textContent = 'Settings saved successfully.';
+        } else {
+            el.className = 'config-toast toast-err';
+            el.textContent = r.error || 'Save failed.';
+        }
+        setTimeout(() => { el.textContent = ''; }, 3000);
+    });
+
+    // Toggle click handlers
+    document.getElementById('toggle-notifications').addEventListener('click', function() {
+        if (!this.disabled) this.classList.toggle('on');
+    });
+
+    document.getElementById('toggle-autostart').addEventListener('click', async function() {
+        if (this.disabled) return;
+        const isOn = this.classList.contains('on');
+        const endpoint = isOn ? '/api/autostart/disable' : '/api/autostart/enable';
+        const r = await api(endpoint, { method: 'POST' });
+        if (r.ok) {
+            this.classList.toggle('on');
+            document.getElementById('autostart-status').textContent =
+                this.classList.contains('on') ? 'LaunchAgent installed' : 'Not installed';
+        } else {
+            alert(r.error || 'Failed to toggle autostart');
+        }
+    });
+
+    document.getElementById('btn-validate').addEventListener('click', async () => {
+        const link = document.getElementById('cfg-share-link').value;
+        const el = document.getElementById('validate-result');
+        if (!link) { el.textContent = 'Enter a link first.'; el.style.color = 'var(--gray-500)'; return; }
+        el.textContent = 'Validating...';
+        el.style.color = 'var(--gray-500)';
+        const r = await api('/api/validate-link?url=' + encodeURIComponent(link));
+        if (r.valid) {
+            el.style.color = '#059669';
+            el.textContent = 'Valid — share link is accessible.';
+        } else {
+            el.style.color = 'var(--red-600)';
+            el.textContent = 'Invalid — ' + (r.error || 'could not access share link.');
+        }
+    });
+
+    loadConfig();
+
+    // ====================================================================
+    // Auth Status Polling
+    // ====================================================================
+    async function refreshAuthStatus() {
+        try {
+            const data = await api('/api/auth/status');
+            const dot = document.getElementById('auth-status-dot');
+            const text = document.getElementById('auth-status-text');
+            const sidebarAuth = document.getElementById('sidebar-auth-text');
+            const signInBtn = document.getElementById('btn-ms-signin');
+            const signOutBtn = document.getElementById('btn-ms-signout');
+
+            if (data.authenticated && data.user) {
+                dot.style.background = '#34d399';
+                dot.style.boxShadow = '0 0 8px rgba(52,211,153,0.5)';
+                text.textContent = 'Signed in as ' + (data.user.name || data.user.username);
+                text.style.color = '#059669';
+                sidebarAuth.textContent = data.user.name || data.user.username;
+                sidebarAuth.style.color = '#34d399';
+                signInBtn.style.display = 'none';
+                signOutBtn.style.display = 'inline-flex';
+            } else {
+                dot.style.background = 'var(--gray-400)';
+                dot.style.boxShadow = 'none';
+                text.textContent = data.available ? 'Not signed in' : 'msal not installed';
+                text.style.color = 'var(--gray-600)';
+                sidebarAuth.textContent = 'Not signed in';
+                sidebarAuth.style.color = 'var(--gray-400)';
+                signInBtn.style.display = 'inline-flex';
+                signOutBtn.style.display = 'none';
+            }
+        } catch (e) {
+            console.error('Auth status poll failed:', e);
+        }
+    }
+
+    document.getElementById('btn-ms-signout').addEventListener('click', async () => {
+        await api('/auth/logout', { method: 'POST' });
+        refreshAuthStatus();
+    });
+
+    setInterval(refreshAuthStatus, 10000);
+    refreshAuthStatus();
+    </script>
+</body>
+</html>

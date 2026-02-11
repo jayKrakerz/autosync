@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+
+# Secrets & tokens
+.token_cache.json
+user_config.json
+
+# Runtime state
+sync_state.json
+sync_history.jsonl
+
+# macOS
+.DS_Store

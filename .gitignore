@@ -19,3 +19,13 @@ sync_history.jsonl
 
 # macOS
 .DS_Store
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# Logs
+autosync.log
+autosync_err.log
+autosync_stdout.log
+autosync_stderr.log

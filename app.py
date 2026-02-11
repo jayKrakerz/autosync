@@ -346,13 +346,24 @@ def api_health():
 
 
 # ---------------------------------------------------------------------------
-# API: Auto-Start (LaunchAgent)
+# API: Auto-Start (LaunchAgent on macOS, Startup folder on Windows)
 # ---------------------------------------------------------------------------
+import platform as _platform
+
+def _get_autostart_module():
+    if _platform.system() == "Windows":
+        import win_service
+        return win_service
+    else:
+        import launchd_service
+        return launchd_service
+
+
 @app.route("/api/autostart/status")
 def api_autostart_status():
     try:
-        import launchd_service
-        return jsonify({"installed": launchd_service.is_installed()})
+        svc = _get_autostart_module()
+        return jsonify({"installed": svc.is_installed()})
     except Exception as e:
         return jsonify({"installed": False, "error": str(e)})
 
@@ -360,8 +371,8 @@ def api_autostart_status():
 @app.route("/api/autostart/enable", methods=["POST"])
 def api_autostart_enable():
     try:
-        import launchd_service
-        ok = launchd_service.install()
+        svc = _get_autostart_module()
+        ok = svc.install()
         return jsonify({"ok": ok})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
@@ -370,8 +381,8 @@ def api_autostart_enable():
 @app.route("/api/autostart/disable", methods=["POST"])
 def api_autostart_disable():
     try:
-        import launchd_service
-        ok = launchd_service.uninstall()
+        svc = _get_autostart_module()
+        ok = svc.uninstall()
         return jsonify({"ok": ok})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500

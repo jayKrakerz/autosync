@@ -484,26 +484,56 @@ def api_webhook_notify():
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
+def _server_is_running(port=8050):
+    """Check if the server is already listening on the given port."""
+    import socket
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex(("localhost", port)) == 0
+
+
+def _start_background_server():
+    """Launch the server as a detached background process."""
+    import subprocess, sys
+    subprocess.Popen(
+        [sys.executable, __file__, "--no-gui"],
+        cwd=os.path.dirname(os.path.abspath(__file__)),
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+    # Wait for server to be ready
+    import time
+    for _ in range(30):
+        if _server_is_running():
+            return True
+        time.sleep(0.5)
+    return False
+
+
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--no-gui", action="store_true", help="Run without native window (browser only)")
+    parser.add_argument("--no-gui", action="store_true", help="Run as headless background server")
     args = parser.parse_args()
 
     if args.no_gui:
-        logger.info("Starting AutoSync Web Dashboard on http://localhost:8050")
+        logger.info("Starting AutoSync server on http://localhost:8050")
         app.run(host="localhost", port=8050, threaded=True, debug=False)
     else:
+        # Ensure background server is running
+        if not _server_is_running():
+            logger.info("Starting background server...")
+            if not _start_background_server():
+                logger.error("Failed to start background server")
+                exit(1)
+        else:
+            logger.info("Server already running on port 8050")
+
+        # Open native window (just a viewer — server lives independently)
         try:
             import webview
-
-            logger.info("Starting AutoSync as native app window")
-            server_thread = threading.Thread(
-                target=lambda: app.run(host="localhost", port=8050, threaded=True, debug=False),
-                daemon=True,
-            )
-            server_thread.start()
+            logger.info("Opening AutoSync window")
             webview.create_window(
                 "AutoSync — RiskArena",
                 "http://localhost:8050",
@@ -513,6 +543,6 @@ if __name__ == "__main__":
             )
             webview.start()
         except ImportError:
-            logger.info("pywebview not installed, falling back to browser mode")
-            logger.info("Starting AutoSync Web Dashboard on http://localhost:8050")
-            app.run(host="localhost", port=8050, threaded=True, debug=False)
+            import webbrowser
+            logger.info("pywebview not installed, opening in browser")
+            webbrowser.open("http://localhost:8050")

@@ -6,10 +6,11 @@ import os
 import threading
 import time
 
+import config as cfg
+
 logger = logging.getLogger(__name__)
 
-_DIR = os.path.dirname(os.path.abspath(__file__))
-HISTORY_PATH = os.path.join(_DIR, "sync_history.jsonl")
+HISTORY_PATH = os.path.join(cfg.DATA_DIR, "sync_history.jsonl")
 MAX_ENTRIES = 1000
 _lock = threading.Lock()
 

@@ -4,6 +4,8 @@ import logging
 import os
 import sys
 
+import config as cfg
+
 logger = logging.getLogger(__name__)
 
 _DIR = os.path.dirname(os.path.abspath(__file__))
@@ -17,12 +19,19 @@ _SHORTCUT_PATH = os.path.join(_STARTUP_DIR, _SHORTCUT_NAME)
 
 def _vbs_content():
     """Generate a VBScript that launches AutoSync without a console window."""
-    python = os.path.join(_DIR, "venv", "Scripts", "pythonw.exe")
-    app_path = os.path.join(_DIR, "app.py")
+    if getattr(sys, "frozen", False):
+        command = f'"{sys.executable}"'
+        working_dir = cfg.DATA_DIR
+    else:
+        python = os.path.join(_DIR, "venv", "Scripts", "pythonw.exe")
+        app_path = os.path.join(_DIR, "app.py")
+        command = f'"{python}" "{app_path}"'
+        working_dir = _DIR
+    command = command.replace('"', '""')
     return (
         f'Set WshShell = CreateObject("WScript.Shell")\n'
-        f'WshShell.CurrentDirectory = "{_DIR}"\n'
-        f'WshShell.Run """{python}"" ""{app_path}""", 0, False\n'
+        f'WshShell.CurrentDirectory = "{working_dir}"\n'
+        f'WshShell.Run "{command}", 0, False\n'
     )
 
 

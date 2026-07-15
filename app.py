@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import queue
+import sys
 import threading
 from datetime import datetime, timezone
 
@@ -34,7 +35,12 @@ logger = logging.getLogger("app")
 # ---------------------------------------------------------------------------
 # Flask app & sync manager
 # ---------------------------------------------------------------------------
-app = Flask(__name__)
+def _resource_path(relative_path):
+    base_path = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base_path, relative_path)
+
+
+app = Flask(__name__, template_folder=_resource_path("templates"))
 manager = SyncManager()
 
 
@@ -493,10 +499,16 @@ def _server_is_running(port=8050):
 
 def _start_background_server():
     """Launch the server as a detached background process."""
-    import subprocess, sys
+    import subprocess
+    if getattr(sys, "frozen", False):
+        args = [sys.executable, "--no-gui"]
+        cwd = cfg.DATA_DIR
+    else:
+        args = [sys.executable, __file__, "--no-gui"]
+        cwd = os.path.dirname(os.path.abspath(__file__))
     subprocess.Popen(
-        [sys.executable, __file__, "--no-gui"],
-        cwd=os.path.dirname(os.path.abspath(__file__)),
+        args,
+        cwd=cwd,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         start_new_session=True,

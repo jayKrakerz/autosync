@@ -5,6 +5,8 @@ import os
 import subprocess
 import sys
 
+import config as cfg
+
 logger = logging.getLogger(__name__)
 
 PLIST_LABEL = "com.riskarena.autosync"
@@ -14,10 +16,15 @@ PLIST_PATH = os.path.join(PLIST_DIR, f"{PLIST_LABEL}.plist")
 _DIR = os.path.dirname(os.path.abspath(__file__))
 
 
+def _program_arguments():
+    if getattr(sys, "frozen", False):
+        return [sys.executable]
+    return [sys.executable, os.path.join(_DIR, "app.py")]
+
+
 def _build_plist():
     """Generate the LaunchAgent plist XML."""
-    python = sys.executable
-    app_path = os.path.join(_DIR, "app.py")
+    args = "\n".join(f"        <string>{arg}</string>" for arg in _program_arguments())
     return f"""<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
   "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -27,19 +34,18 @@ def _build_plist():
     <string>{PLIST_LABEL}</string>
     <key>ProgramArguments</key>
     <array>
-        <string>{python}</string>
-        <string>{app_path}</string>
+{args}
     </array>
     <key>WorkingDirectory</key>
-    <string>{_DIR}</string>
+    <string>{cfg.DATA_DIR}</string>
     <key>RunAtLoad</key>
     <true/>
     <key>KeepAlive</key>
     <false/>
     <key>StandardOutPath</key>
-    <string>{os.path.join(_DIR, "autosync_stdout.log")}</string>
+    <string>{os.path.join(cfg.DATA_DIR, "autosync_stdout.log")}</string>
     <key>StandardErrorPath</key>
-    <string>{os.path.join(_DIR, "autosync_stderr.log")}</string>
+    <string>{os.path.join(cfg.DATA_DIR, "autosync_stderr.log")}</string>
 </dict>
 </plist>"""
 

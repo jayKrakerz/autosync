@@ -1,8 +1,22 @@
 import json
 import os
+import platform
 
 _DIR = os.path.dirname(os.path.abspath(__file__))
-USER_CONFIG_PATH = os.path.join(_DIR, "user_config.json")
+
+
+def _default_data_dir():
+    system = platform.system()
+    if system == "Darwin":
+        return os.path.join(os.path.expanduser("~"), "Library", "Application Support", "AutoSync")
+    if system == "Windows":
+        return os.path.join(os.environ.get("APPDATA", os.path.expanduser("~")), "AutoSync")
+    return os.path.join(os.environ.get("XDG_DATA_HOME", os.path.join(os.path.expanduser("~"), ".local", "share")), "autosync")
+
+
+DATA_DIR = os.environ.get("AUTOSYNC_DATA_DIR", _default_data_dir())
+os.makedirs(DATA_DIR, exist_ok=True)
+USER_CONFIG_PATH = os.path.join(DATA_DIR, "user_config.json")
 
 
 def _load_user_config():
@@ -31,20 +45,20 @@ _user_cfg = _load_user_config()
 # Microsoft OAuth (Auth Code Flow with PKCE)
 CLIENT_ID = os.environ.get("AUTOSYNC_CLIENT_ID", _user_cfg.get("client_id", ""))
 TENANT_ID = os.environ.get("AUTOSYNC_TENANT_ID", _user_cfg.get("tenant_id", "consumers"))
-TOKEN_CACHE_PATH = os.path.join(_DIR, ".token_cache.json")
+TOKEN_CACHE_PATH = os.path.join(DATA_DIR, ".token_cache.json")
 
 # OneDrive shared link (Edit permissions required for bi-directional sync)
 # Priority: env var > user_config.json > empty
 SHARE_LINK = os.environ.get("AUTOSYNC_SHARE_LINK", _user_cfg.get("share_link", ""))
 
 # Local folder to sync
-LOCAL_FOLDER = os.environ.get("AUTOSYNC_LOCAL_FOLDER", _user_cfg.get("local_folder", os.path.join(_DIR, "sync_folder")))
+LOCAL_FOLDER = os.environ.get("AUTOSYNC_LOCAL_FOLDER", _user_cfg.get("local_folder", os.path.join(DATA_DIR, "sync_folder")))
 
 # Polling interval in seconds (default: 5 minutes)
 POLL_INTERVAL = int(os.environ.get("AUTOSYNC_POLL_INTERVAL", _user_cfg.get("poll_interval", 300)))
 
 # Path to sync state database
-STATE_DB_PATH = os.environ.get("AUTOSYNC_STATE_DB", os.path.join(_DIR, "sync_state.json"))
+STATE_DB_PATH = os.environ.get("AUTOSYNC_STATE_DB", os.path.join(DATA_DIR, "sync_state.json"))
 
 # Suffix added to conflicting local files
 CONFLICT_SUFFIX = "_CONFLICT"
@@ -93,7 +107,7 @@ def reload_config():
     SHARE_LINK = os.environ.get("AUTOSYNC_SHARE_LINK", fresh.get("share_link", ""))
     LOCAL_FOLDER = os.environ.get(
         "AUTOSYNC_LOCAL_FOLDER",
-        fresh.get("local_folder", os.path.join(_DIR, "sync_folder")),
+        fresh.get("local_folder", os.path.join(DATA_DIR, "sync_folder")),
     )
     POLL_INTERVAL = int(
         os.environ.get("AUTOSYNC_POLL_INTERVAL", fresh.get("poll_interval", 300))

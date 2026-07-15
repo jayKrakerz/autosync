@@ -131,6 +131,19 @@
         .sidebar-status-dot.on { background: #34d399; box-shadow: 0 0 8px rgba(52,211,153,0.5); }
         .sidebar-status-dot.off { background: var(--gray-600); }
         .sidebar-status-text { font-size: 0.78rem; color: var(--gray-400); }
+        #sidebar-auth {
+            overflow: hidden;
+        }
+        #sidebar-auth-text {
+            display: block;
+            width: 100%;
+            min-width: 0;
+            max-width: 100%;
+            overflow: hidden;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            line-height: 1.4;
+        }
 
         .main { margin-left: 240px; flex: 1; min-height: 100vh; }
 
@@ -333,6 +346,13 @@
         .field-input:focus { border-color: var(--red-400); box-shadow: 0 0 0 3px rgba(220,38,38,0.1); }
         .field-input:disabled { background: var(--gray-100); color: var(--gray-500); }
 
+        #auth-status-text {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
         textarea.field-input { min-height: 80px; resize: vertical; font-family: 'SF Mono', monospace; font-size: 0.8rem; }
 
         .field-row { display: flex; gap: 0.5rem; align-items: stretch; }
@@ -498,7 +518,7 @@
 
             <div class="sidebar-status" id="sidebar-auth" style="border-top: 1px solid rgba(255,255,255,0.08); padding: 0.75rem 1.25rem;">
                 <div style="font-size:0.68rem;font-weight:600;color:var(--gray-500);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.35rem;">Account</div>
-                <div id="sidebar-auth-text" style="font-size:0.78rem;color:var(--gray-400);">Not signed in</div>
+                <div id="sidebar-auth-text" style="display:block;width:100%;min-width:0;max-width:100%;overflow:hidden;overflow-wrap:anywhere;word-break:break-word;line-height:1.4;font-size:0.78rem;color:var(--gray-400);">Not signed in</div>
             </div>
             <div class="sidebar-status">
                 <span class="sidebar-status-dot off" id="sidebar-dot"></span>
@@ -889,6 +909,11 @@
         const d = document.createElement('div');
         d.textContent = s;
         return d.innerHTML;
+    }
+
+    function shortAccountName(name) {
+        if (!name) return '';
+        return name.length > 24 ? name.slice(0, 21) + '...' : name;
     }
 
     // ====================================================================
@@ -1418,8 +1443,11 @@
                 dot.style.background = '#34d399';
                 dot.style.boxShadow = '0 0 8px rgba(52,211,153,0.5)';
                 text.textContent = 'Signed in as ' + (data.user.name || data.user.username);
+                text.title = text.textContent;
                 text.style.color = '#059669';
-                sidebarAuth.textContent = data.user.name || data.user.username;
+                const accountName = data.user.name || data.user.username;
+                sidebarAuth.textContent = shortAccountName(accountName);
+                sidebarAuth.title = accountName;
                 sidebarAuth.style.color = '#34d399';
                 signInBtn.style.display = 'none';
                 signOutBtn.style.display = 'inline-flex';
@@ -1427,8 +1455,10 @@
                 dot.style.background = 'var(--gray-400)';
                 dot.style.boxShadow = 'none';
                 text.textContent = data.available ? 'Not signed in' : 'msal not installed';
+                text.title = text.textContent;
                 text.style.color = 'var(--gray-600)';
                 sidebarAuth.textContent = 'Not signed in';
+                sidebarAuth.title = sidebarAuth.textContent;
                 sidebarAuth.style.color = 'var(--gray-400)';
                 signInBtn.style.display = 'inline-flex';
                 signOutBtn.style.display = 'none';
